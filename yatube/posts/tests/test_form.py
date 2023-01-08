@@ -102,7 +102,7 @@ class PostCreateFormTests(TestCase):
         post_object = Post.objects.filter(
             text=form_data['text'],
             group=form_data['group'],
-            uthor=self.user.pk
+            author=self.user.pk
         )
         self.assertEqual(Post.objects.count(), posts_count + 1)
         self.assertTrue(post_object.exists)
