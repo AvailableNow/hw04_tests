@@ -1,18 +1,19 @@
 from .models import Post
 
-from django.forms import ModelForm, CharField, Textarea
+from django.forms import ModelForm
 
 
 class PostForm(ModelForm):
-    text = CharField(
-        widget=Textarea,
-        label="Введите текст",
-        required=True,
-        help_text="Текст поста",
-    )
 
     class Meta:
         model = Post
-        fields = ("text", "group")
-        labels = {"group": "Выберите нужную группу"}
-        help_text = {"group": "Группа поста"}
+        fields = ('text', 'group')
+        labels = {
+            'text': 'Введите текст',
+            'group': 'Выберите нужную группу'
+        }
+        help_text = {
+            'text': 'Придумайте текст для поста. '
+                    'Поле обязательно для заполнения',
+            'group': 'Группа поста',
+        }

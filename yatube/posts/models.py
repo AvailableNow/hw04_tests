@@ -2,7 +2,8 @@ from django.contrib.auth import get_user_model
 from django.db import models
 
 User = get_user_model()
-string_from_post = 'author: {}, date: {:%m%d%Y}, group: {}, text: {}'
+STRING_FROM_POST = 'author: {}, date: {:%m%d%Y}, group: {}, text: {}'
+LENGTH = 15
 
 
 class Group(models.Model):
@@ -55,13 +56,13 @@ class Post(models.Model):
 
     class Meta:
         ordering = ('-pub_date',)
-        verbose_name = 'Запись'
-        verbose_name_plural = 'Записи'
+        verbose_name = 'Пост'
+        verbose_name_plural = 'Посты'
 
     def __str__(self):
-        return string_from_post.format(
+        return STRING_FROM_POST.format(
             self.author.username,
             self.pub_date,
             self.group,
-            self.text[:15],
+            self.text[:LENGTH],
         )

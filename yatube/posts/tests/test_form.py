@@ -1,16 +1,20 @@
 import shutil
 import tempfile
-from http import HTTPStatus
 
 from django.conf import settings
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
+from ..forms import PostForm
 from ..models import Group, Post, User
 
 # Создаем временную папку для медиа-файлов;
 # на момент теста медиа папка будет переопределена
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
+POST_TEST = "ш" * 50
+
+MAIN_PAGE = reverse('posts:index')
+NEW_POST = reverse('posts:post_create')
 
 
 # Для сохранения media-файлов в тестах будет использоватьсяgs
@@ -22,12 +26,18 @@ class PostCreateFormTests(TestCase):
         super().setUpClass()
         # Создаем записи в базе данных
         cls.user = User.objects.create(username="NoNoName")
-        cls.form = PostCreateFormTests()
+        cls.form = PostForm()
         cls.group = Group.objects.create(
             title="Тестовый заголовок группы",
             slug="test-slug",
             description="Тестовое описание",
         )
+        cls.group_2 = Group.objects.create(
+            title="новая группа",
+            slug='test_slug2',
+            description="Тест-описание2"
+        )
+
         # Создадим запись в БД
         cls.post = Post.objects.create(
             author=cls.user,
@@ -42,72 +52,101 @@ class PostCreateFormTests(TestCase):
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
-        # Создаем неавторизованный клиент
+        # первый клиент автор поста
         self.guest_client = Client()
-        # Создаем авторизованный клиент
+        self.user = User.objects.create_user(username='testauthor_1')
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+        self.username = self.user.username
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
+        # второй клиент не автор поста
+        self.authorized_client_2 = Client()
+        self.user_2 = User.objects.create_user(username='testauthor_2')
+        self.authorized_client_2 = Client()
+        self.authorized_client_2.force_login(self.user_2)
+        self.username_2 = self.user_2.username
+
+        self.post = Post.objects.create(
+            text=POST_TEST,
+            group=self.group,
+            author=self.user
+        )
+        self.EDIT_PAGE = reverse(
+            'posts:post_edit', args=[self.post.id]
+        )
+
+    # Тест для проверки формы создания нового поста (create_post)
     def test_create_post(self):
         """Проверка, что валидная форма создаёт пост"""
-        # Подсчитаем количество записей в Post
-        posts_count = Post.objects.count()
         # Подготавливаем данные для передачи в форму
         form_data = {
-            "text": "Текст записанный в форму",
-            "group": self.group.id
+            "text": "тестовая публикация",
+            "group": self.group.pk
         }
-        # Отправляем POST-запрос
-        response = self.authorized_client.post(
-            reverse("posts:post_create"),
-            data=form_data,
-            follow=True
-        )
-        # Проверка кода ответа страницы
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        # Проверяем, что создалась запись с нашим text
-        self.assertTrue(
-            Post.objects.filter(
-                text="Текст записанный в форму",
-                group=self.group.id,
-                author=self.user
-            ).exists()
-        )
-        # Проверяем, увеличилось ли число постов
-        self.assertEqual(Post.objects.count(), posts_count + 1)
+        # Передаем данные в нашу форму
+        form = PostForm(form_data)
+        #  Проверяем заполнение формы
+        self.assertTrue(form.is_valid())
 
-    def test_post_edit(self):
-        """Проверка, что валидная форма редактирует пост"""
-        self.post = Post.objects.create(
-            text="Тестовый текст",
-            author=self.user,
-            group=self.group
-        )
-        old_text = self.post
-        self.group2 = Group.objects.create(
-            title="Тестовая группа2",
-            slug="test-group",
-            description="Описание"
-        )
-        form_data = {
-            "text": "Текст записанный в форму",
-            "group": self.group2.id
-        }
-        response = self.authorized_client.post(
-            reverse("posts:post_edit",
-                    args=(self.post.id,)),
+        # Подсчитаем количество записей в Post
+        posts_count = Post.objects.count()
+        # Отправляем POST-запрос (сохраняем наш пост)
+        self.authorized_client.post(
+            NEW_POST,
             data=form_data,
-            follow=True,
+            folow=True
         )
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertTrue(
-            Post.objects.filter(
-                group=self.group2.id,
-                author=self.user,
-                pub_date=self.post.pub_date
-            ).exists()
+        # Сравниваем пост с полями формы
+        post_object = Post.objects.filter(
+            text=form_data['text'],
+            group=form_data['group'],
+            uthor=self.user.pk
         )
-        error_name1 = "Пользователь не может изменить текст поста"
-        self.assertNotEqual(old_text.text, form_data["text"], error_name1)
-        error_name2 = "Пользователь не может изменить группу поста"
-        self.assertNotEqual(old_text.group, form_data["group"], error_name2)
+        self.assertEqual(Post.objects.count(), posts_count + 1)
+        self.assertTrue(post_object.exists)
+
+    def test_post_edit_by_author(self):
+        '''Выполнение редактирование поста автором'''
+        pk_list_before = Post.objects.filter().values_list('pk', flat=True)
+        # Подготавливаем данные для передачи в форму
+        form_data = {
+            'text': 'Автор, редактирует пост',
+            'group': self.group_2.pk,
+        }
+        # Отправляем POST-запрос (редактируем наш пост)
+        self.authorized_client.post(
+            self.EDIT_PAGE,
+            data=form_data,
+            follow=False
+        )
+
+        pk_list_after = Post.objects.filter().values_list('pk', flat=True)
+        self.assertEqual(set(pk_list_before), set(pk_list_after))
+        new_post = Post.objects.get(pk=self.post.id)
+        self.assertEqual(new_post.text, form_data['text'])
+        self.assertEqual(new_post.group.pk, form_data['group'])
+        self.assertEqual(new_post.author.username, self.username)
+
+    def test_post_edit_by_non_author(self):
+        '''Редактирование поста не автором поста
+        невозможно'''
+        pk_list_before = Post.objects.filter().values_list('pk', flat=True)
+
+        form_data = {
+            'text': 'это сообщение не должно переписаться в пост',
+            'group': self.group_2.pk,
+        }
+        self.authorized_client_2.post(
+            self.EDIT_PAGE,
+            data=form_data,
+            follow=False
+        )
+
+        pk_list_after = Post.objects.filter().values_list('pk', flat=True)
+        self.assertEqual(set(pk_list_before), set(pk_list_after))
+        new_post = Post.objects.get(pk=pk_list_after[-0])
+        self.assertEqual(new_post.text, self.post.text)
+        self.assertEqual(new_post.group.pk, self.post.group.pk)
+        self.assertEqual(new_post.author.username, self.username)
