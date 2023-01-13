@@ -3,13 +3,13 @@ from django.urls import reverse
 
 from ..models import Group, Post, User
 
-MAIN_PAGE = reverse('posts:index')
-NEW_POST = reverse('posts:post_create')
-PAGE_NOT_FOUND = '/unexisting-page/'
+MAIN_URL = reverse('posts:index')
+NEW_POST_URL = reverse('posts:post_create')
+NOT_FOUND_URL = '/unexisting-page/'
 POST_TEXT = "ш" * 50
 
 
-class StaticURLTests(TestCase):
+class PostsURLTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -28,6 +28,15 @@ class StaticURLTests(TestCase):
             group=cls.group,
             author=cls.user
         )
+        # библиотека урлов
+        cls.POST_PAGE_URL = reverse(
+            'posts:post_detail',
+            args=[cls.post.id]
+        )
+        cls.EDIT_POST_URL = reverse(
+            'posts:post_edit',
+            args=[cls.post.id]
+        )
 
     def setUp(self):
         # первый клиент автор поста
@@ -39,28 +48,26 @@ class StaticURLTests(TestCase):
         self.authorized_client_2 = Client()
         self.authorized_client_2 = Client()
         self.authorized_client_2.force_login(self.user_2)
-        # библиотека урлов
-        # self.post_id = self.post.pk
-        self.POST_PAGE = reverse('posts:post_detail', args=[self.post.id])
-        self.EDIT_PAGE = reverse("posts:post_edit",
-                                 args=[self.post.id])
+
+        self.slug = self.group.slug
+        self.GROUP_URL = reverse("posts:group_list", args=[self.slug])
+        self.PROFILE_URL = reverse("posts:profile", args=[self.username])
 
     # 1. Проверка запросов к страницам
     def test_url_exists(self):
         """Проверка доступности адресов любого клиента"""
-        slug = self.group.slug
-        GROUP_PAGE = reverse("posts:group_list", args=[slug])
-        PROFILE_PAGE = reverse("posts:profile", args=[self.username])
         url_names = [
-            [MAIN_PAGE, self.guest_client, 200],
-            [GROUP_PAGE, self.guest_client, 200],
-            [PROFILE_PAGE, self.guest_client, 200],
-            [NEW_POST, self.guest_client, 302],
-            [NEW_POST, self.authorized_client, 200],
-            [self.POST_PAGE, self.guest_client, 200],
-            [self.EDIT_PAGE, self.guest_client, 302],
-            [self.EDIT_PAGE, self.authorized_client, 200],
-            [PAGE_NOT_FOUND, self.guest_client, 404],
+            [MAIN_URL, self.guest_client, 200],
+            [MAIN_URL, self.authorized_client, 200],
+            [self.GROUP_URL, self.guest_client, 200],
+            [self.PROFILE_URL, self.guest_client, 200],
+            [NEW_POST_URL, self.guest_client, 302],
+            [NEW_POST_URL, self.authorized_client, 200],
+            [self.POST_PAGE_URL, self.guest_client, 200],
+            [self.EDIT_POST_URL, self.guest_client, 302],
+            [self.EDIT_POST_URL, self.authorized_client, 200],
+            [NOT_FOUND_URL, self.guest_client, 404],
+            [NOT_FOUND_URL, self.authorized_client, 404],
         ]
 
         for url, client, code in url_names:
@@ -70,16 +77,14 @@ class StaticURLTests(TestCase):
     # 2. Проверка шаблонов
     def test_url_uses_correct_templates(self):
         """Проверка шаблонов для адресов и разных клиентов "/" """
-        slug = self.group.slug
-        GROUP_PAGE = reverse("posts:group_list", args=[slug])
-        PROFILE_PAGE = reverse("posts:profile", args=[self.username])
         url_names = [
-            ["posts/index.html", MAIN_PAGE, self.guest_client],
-            ["posts/group_list.html", GROUP_PAGE, self.guest_client],
-            ["posts/post_detail.html", self.POST_PAGE, self.guest_client],
-            ["posts/profile.html", PROFILE_PAGE, self.guest_client],
-            ["posts/create_post.html", NEW_POST, self.authorized_client],
-            ["posts/create_post.html", self.EDIT_PAGE, self.authorized_client],
+            ["posts/index.html", MAIN_URL, self.guest_client],
+            ["posts/group_list.html", self.GROUP_URL, self.guest_client],
+            ["posts/post_detail.html", self.POST_PAGE_URL, self.guest_client],
+            ["posts/profile.html", self.PROFILE_URL, self.guest_client],
+            ["posts/create_post.html", NEW_POST_URL, self.authorized_client],
+            ["posts/create_post.html", self.EDIT_POST_URL,
+             self.authorized_client],
         ]
 
         for template, url, client in url_names:
@@ -89,13 +94,13 @@ class StaticURLTests(TestCase):
     # Проверка редиректов
     def test_redirect(self):
         """Проверка редиректов для страниц."""
-        PROFILE_PAGE = reverse("posts:profile", args=[self.username])
         url_names = [
-            [NEW_POST, self.guest_client, (reverse("login") + "?next="
-                                           + NEW_POST)],
-            [self.EDIT_PAGE, self.guest_client, (reverse("login")
-                                                 + "?next=" + self.EDIT_PAGE)],
-            [self.EDIT_PAGE, self.authorized_client_2, PROFILE_PAGE],
+            [NEW_POST_URL, self.guest_client, (reverse("login") + "?next="
+                                               + NEW_POST_URL)],
+            [self.EDIT_POST_URL, self.guest_client, (reverse("login")
+                                                     + "?next="
+                                                     + self.EDIT_POST_URL)],
+            [self.EDIT_POST_URL, self.authorized_client_2, self.PROFILE_URL],
         ]
 
         for url, client, redirected in url_names:

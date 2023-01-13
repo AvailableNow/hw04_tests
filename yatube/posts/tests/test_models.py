@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from ..models import Group, Post, User, STRING_FROM_POST, LENGTH
+from ..models import Group, Post, User, STRING_FROM_POST
 
 
 class PostModelTest(TestCase):
@@ -30,7 +30,7 @@ class PostModelTest(TestCase):
         for value, expected in field_verboses_post.items():
             with self.subTest(value=value):
                 self.assertEqual(
-                    self.post._meta.get_field(value).verbose_name, expected
+                    Post._meta.get_field(value).verbose_name, expected
                 )
 
         field_verboses_group = {
@@ -41,7 +41,7 @@ class PostModelTest(TestCase):
         for value, expected in field_verboses_group.items():
             with self.subTest(value=value):
                 self.assertEqual(
-                    self.group._meta.get_field(value).verbose_name, expected
+                    Group._meta.get_field(value).verbose_name, expected
                 )
 
     def test_help_text(self):
@@ -58,23 +58,21 @@ class PostModelTest(TestCase):
         for value, expected in field_help_text_post.items():
             with self.subTest(value=value):
                 self.assertEqual(
-                    self.post._meta.get_field(value).help_text, expected
+                    Post._meta.get_field(value).help_text, expected
                 )
         for value, expected in field_help_text_group.items():
             with self.subTest(value=value):
                 self.assertEqual(
-                    self.group._meta.get_field(value).help_text, expected
+                    Group._meta.get_field(value).help_text, expected
                 )
 
     def test_models_have_correct_object_names(self):
         """Проверяем, что у моделей корректно работает __str__."""
-        task_post = PostModelTest.post
-        expected_object_name_post = STRING_FROM_POST .format(
+        task_post = self.post
+        self.assertEqual(STRING_FROM_POST.format(
             task_post.author,
             task_post.pub_date,
             task_post.group,
-            task_post.text[:LENGTH],
-        )
-        self.assertEqual(expected_object_name_post, str(task_post))
-        expected_object_name_group = self.group.title
-        self.assertEqual(expected_object_name_group, str(self.group))
+            task_post.text,
+        ), str(task_post))
+        self.assertEqual(self.group.title, str(self.group))

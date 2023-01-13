@@ -2,8 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 
 User = get_user_model()
-STRING_FROM_POST = 'author: {}, date: {:%m%d%Y}, group: {}, text: {}'
-LENGTH = 15
+STRING_FROM_POST = 'author: {}, date: {:%m%d%Y}, group: {}, text: {:.15}'
 
 
 class Group(models.Model):
@@ -64,5 +63,5 @@ class Post(models.Model):
             self.author.username,
             self.pub_date,
             self.group,
-            self.text[:LENGTH],
+            self.text,
         )

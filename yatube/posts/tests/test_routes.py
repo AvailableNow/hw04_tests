@@ -1,34 +1,24 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from ..models import Group, Post, User
+USERNAME = 'test_user'
+SLUG = 'test_group'
+POST_ID = 1
 
 
 class RoutesTest(TestCase):
     def test_routes(self):
-        user = User.objects.create_user(username='test_user')
-        group = Group.objects.create(
-            title='Наименование_группы',
-            description='Описание_группы',
-            slug='test_group'
-        )
-        post = Post.objects.create(
-            text='публикация тестовая',
-            group=group,
-            author=user
-        )
 
-        test_urls = {
-            reverse('posts:index'): '/',
-            reverse('posts:post_create'): '/create/',
-            reverse('posts:group_list',
-                    args=[group.slug]): f'/group/{group.slug}/',
-            reverse('posts:profile',
-                    args=[user.username]): f'/profile/{user.username}/',
-            reverse('posts:post_detail',
-                    args=[post.id]): f'/posts/{post.id}/',
-            reverse('posts:post_edit',
-                    args=[post.id]): f'/posts/{post.id}/edit/',
-        }
-        for page, url in test_urls.items():
-            self.assertEqual(page, url)
+        test_urls = [
+            ['index', '/'],
+            ['post_create', '/create/'],
+            ['group_list', SLUG, f'/group/{SLUG}/'],
+            ['profile', USERNAME, f'/profile/{USERNAME}/'],
+            ['post_detail',
+                POST_ID, f'/posts/{POST_ID}/'],
+            ['post_edit',
+                POST_ID, f'/posts/{POST_ID}/edit/'],
+        ]
+        for page, *var, url in test_urls:
+            with self.subTest(page=page):
+                self.assertEqual(reverse(f'posts:{page}', args=var), url)
