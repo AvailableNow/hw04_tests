@@ -24,7 +24,9 @@ class PostCreateFormTests(TestCase):
         super().setUpClass()
         # Создаем записи в базе данных
         cls.user = User.objects.create_user(username='testauthor_1')
+        cls.username = cls.user.username
         cls.user_2 = User.objects.create_user(username="testauthor_2")
+        cls.username_2 = cls.user_2.username
         cls.group = Group.objects.create(
             title="Тестовый заголовок группы",
             slug="test-slug",
@@ -51,6 +53,10 @@ class PostCreateFormTests(TestCase):
             'posts:post_edit',
             args=[cls.post.id]
         )
+        cls.PROFILE_URL = reverse(
+            "posts:profile",
+            args=[cls.username]
+        )
 
     # Удаляем временную папку
     @classmethod
@@ -63,31 +69,22 @@ class PostCreateFormTests(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
-        self.username = self.user.username
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
         # второй клиент не автор поста
         self.authorized_client_2 = Client()
         self.authorized_client_2 = Client()
         self.authorized_client_2.force_login(self.user_2)
-        self.username_2 = self.user_2.username
-
-        self.EDIT_POST_URL = reverse(
-            'posts:post_edit', args=[self.post.id]
-        )
-        self.PROFILE_PAGE = reverse("posts:profile", args=[self.username])
 
     # Тест для проверки формы создания нового поста (create_post)
     def test_create_post(self):
         """Проверка, что валидная форма создаёт пост"""
         form_data = {
             "text": "тестовая публикация",
-            "group": self.group.pk
+            "group": self.group_2.pk
         }
-
         # Подсчитаем количество записей в Post
         posts_count = Post.objects.count()
-
         posts_before = set(Post.objects.all())
         response = self.authorized_client.post(
             NEW_POST_URL,
@@ -95,17 +92,16 @@ class PostCreateFormTests(TestCase):
             follow=True
         )
         posts_after = set(Post.objects.all())
-        new_post_list = list(posts_after.difference(posts_before))
-        new_post = new_post_list[0]
         self.assertEqual(Post.objects.count(), posts_count + 1)
-        self.assertEqual(len(new_post_list), 1)
-        self.assertEqual(new_post.text, form_data['text'])
-        self.assertEqual(new_post.group.id, form_data['group'])
-        self.assertEqual(new_post.author, self.user)
-        self.assertRedirects(response, self.PROFILE_PAGE)
+        self.assertEqual(len(posts_after.difference(posts_before)), 1)
+        post = list(posts_after.difference(posts_before))[0]
+        self.assertEqual(post.text, form_data['text'])
+        self.assertEqual(post.group.id, form_data['group'])
+        self.assertEqual(post.author, self.user)
+        self.assertRedirects(response, self.PROFILE_URL)
 
     def test_post_edit_by_author(self):
-        '''Выполнение редактирование поста автором'''
+        """Выполнение редактирование поста автором"""
         posts_count = Post.objects.count()
         form_data = {
             'text': 'Автор, редактирует пост',
@@ -116,16 +112,16 @@ class PostCreateFormTests(TestCase):
             data=form_data,
             follow=True
         )
-        edited_post = Post.objects.get(pk=self.post.pk)
+        post = Post.objects.get(pk=self.post.pk)
         self.assertRedirects(response, self.POST_PAGE_URL)
         self.assertEqual(Post.objects.count(), posts_count)
-        self.assertEqual(edited_post.group.id, form_data['group'])
-        self.assertEqual(edited_post.text, form_data['text'])
-        # self.assertEqual(edited_post.author, self.post.author.username)
+        self.assertEqual(post.group.id, form_data['group'])
+        self.assertEqual(post.text, form_data['text'])
+        self.assertEqual(post.author, self.post.author)
 
     def test_post_edit_by_non_author(self):
-        '''Редактирование поста не автором поста
-        невозможно'''
+        """Редактирование поста не автором поста
+        невозможно"""
         form_data = {
             'text': 'это сообщение не должно переписаться в пост',
             'group': self.group.pk,
@@ -136,8 +132,8 @@ class PostCreateFormTests(TestCase):
             follow=True
         )
 
-        edited_post = Post.objects.get(pk=self.post.pk)
-        self.assertRedirects(response, self.PROFILE_PAGE)
-        self.assertEqual(edited_post.text, self.post.text)
-        self.assertEqual(edited_post.group, self.post.group)
-        self.assertEqual(edited_post.author, self.post.author)
+        post = Post.objects.get(pk=self.post.pk)
+        self.assertRedirects(response, self.PROFILE_URL)
+        self.assertEqual(post.text, self.post.text)
+        self.assertEqual(post.group, self.post.group)
+        self.assertEqual(post.author, self.post.author)

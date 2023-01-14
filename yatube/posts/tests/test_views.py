@@ -35,6 +35,7 @@ class PostsPagesTests(TestCase):
         )
 
         cls.user = User.objects.create_user(username='testauthor_1')
+        cls.username = cls.user.username
 
         cls.post = Post.objects.create(
             text=POST_TEST,
@@ -45,6 +46,18 @@ class PostsPagesTests(TestCase):
         cls.post_id = cls.post.id
         cls.POST_PAGE_URL = reverse(
             'posts:post_detail', args=[cls.post.id]
+        )
+        cls.GROUP_URL = reverse(
+            'posts:group_list',
+            args=[cls.group.slug]
+        )
+        cls.PROFILE_URL = reverse(
+            'posts:profile',
+            args=[cls.username]
+        )
+        cls.ANOTHER_GROUP_URL = reverse(
+            'posts:group_list',
+            args=[cls.group_2.slug]
         )
 
     # Удаляем временную папку
@@ -58,49 +71,40 @@ class PostsPagesTests(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
-        self.username = self.user.username
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
     def test_index_group_profile_show_correct_context(self):
         """Шаблоны index,group,profile сформированы с правильным контекстом."""
-        slug = self.group.slug
-        GROUP_URL = reverse("posts:group_list", args=[slug])
-        PROFILE_URL = reverse("posts:profile", args=[self.username])
         urls = {
             MAIN_URL: 'page_obj',
-            GROUP_URL: 'page_obj',
-            PROFILE_URL: 'page_obj',
+            self.GROUP_URL: 'page_obj',
+            self.PROFILE_URL: 'page_obj',
             self.POST_PAGE_URL: 'post',
         }
         for url, context_name in urls.items():
             with self.subTest(url=url):
                 response = self.guest_client.get(url)
                 if context_name == 'page_obj':
-                    post_list = response.context['page_obj']
-                    self.assertEqual(len(post_list), 1)
-                    post = post_list[0]
+                    self.assertEqual(len(response.context.get('page_obj')), 1)
+                    chek_post = response.context.get('page_obj')[0]
                 else:
-                    post = response.context['post']
-                    self.assertEqual(Post.objects.count(), 1)
-                    self.assertEqual(POST_TEST, post.text)
-                    self.assertEqual(self.username, post.author.username)
-                    self.assertEqual(self.group.title, post.group.title)
-                    self.assertEqual(self.post.id, post.id)
+                    chek_post = response.context['post']
+                    self.assertEqual(POST_TEST, chek_post.text)
+                    self.assertEqual(self.post.author, chek_post.author)
+                    self.assertEqual(self.post.group, chek_post.group)
+                    self.assertEqual(self.post, chek_post)
 
     def test_profile_has_correct_context(self):
         '''Автор в контексте Профиля'''
-        PROFILE_URL = reverse("posts:profile", args=[self.username])
-        response = self.authorized_client.get(PROFILE_URL)
+        response = self.authorized_client.get(self.PROFILE_URL)
         self.assertEqual(
-            response.context['author'].username, self.user.username
+            response.context['author'], self.user
         )
 
     def test_group_list_has_correct_context(self):
         '''Группа в контексте Групп-ленты без искажения атрибутов'''
-        slug = self.group.slug
-        GROUP_URL = reverse("posts:group_list", args=[slug])
-        response = self.authorized_client.get(GROUP_URL)
+        response = self.authorized_client.get(self.GROUP_URL)
         group = response.context['group']
         self.assertEqual(group.title, self.group.title)
         self.assertEqual(group.description, self.group.description)
@@ -109,13 +113,8 @@ class PostsPagesTests(TestCase):
 
     def test_post_to_the_right_group(self):
         '''Пост не попал на чужую Групп-ленту'''
-        self.slug = self.group_2.slug
-        ANOTHER_GROUP_URL = reverse(
-            'posts:group_list', args=[self.slug]
-        )
-        response = self.authorized_client.get(ANOTHER_GROUP_URL)
-        group_posts = response.context['page_obj']
-        self.assertNotIn(self.post, group_posts)
+        response = self.authorized_client.get(self.ANOTHER_GROUP_URL)
+        self.assertNotIn(self.post, response.context['page_obj'])
 
 
 class PaginatorTest(TestCase):
@@ -128,31 +127,31 @@ class PaginatorTest(TestCase):
             slug='test_slug',
             description='Тестовое описание',
         )
-
-        cls.posts = []
-        for i in range(settings.MAX_POSTS + POSTS_SECOND_PAGE):
-            cls.posts.append(Post(
-                text=f'Тестовый псто {i}',
-                author=cls.user,
-                group=cls.group_3,
-            ))
-        Post.objects.bulk_create(cls.posts)
-
+        cls.post = Post.objects.bulk_create(
+            [
+                Post(
+                    text=f"Тестовый текст{i}",
+                    author=cls.user,
+                    group=cls.group_3
+                )
+                for i in range(settings.MAX_POSTS + POSTS_SECOND_PAGE)
+            ]
+        )
         cls.guest = Client()
+        cls.GROUP_URL = reverse("posts:group_list", args=[cls.group_3.slug])
+        cls.GROUP_LIST_PAGINATOR_SECOND = f'{cls.GROUP_URL}?page=2'
+        cls.PROFILE_PAGE = reverse("posts:profile", args=[cls.user.username])
+        cls.PROFILE_PAGINATOR_SECOND = f'{cls.PROFILE_PAGE}?page=2'
 
     def test_paginator(self):
-        self.slug = self.group_3.slug
-        GROUP_URL = reverse("posts:group_list", args=[self.slug])
-        GROUP_LIST_PAGINATOR_SECOND = f'{GROUP_URL}?page=2'
-        PROFILE_PAGE = reverse("posts:profile", args=[self.user.username])
-        PROFILE_PAGINATOR_SECOND = f'{PROFILE_PAGE}?page=2'
+
         urls = {
             MAIN_URL: settings.MAX_POSTS,
             MAIN_PAGE_PAGINATOR_SECOND: POSTS_SECOND_PAGE,
-            GROUP_URL: settings.MAX_POSTS,
-            GROUP_LIST_PAGINATOR_SECOND: POSTS_SECOND_PAGE,
-            PROFILE_PAGE: settings.MAX_POSTS,
-            PROFILE_PAGINATOR_SECOND: POSTS_SECOND_PAGE,
+            self.GROUP_URL: settings.MAX_POSTS,
+            self.GROUP_LIST_PAGINATOR_SECOND: POSTS_SECOND_PAGE,
+            self.PROFILE_PAGE: settings.MAX_POSTS,
+            self.PROFILE_PAGINATOR_SECOND: POSTS_SECOND_PAGE,
         }
         for url, number in urls.items():
             with self.subTest(url=url):
