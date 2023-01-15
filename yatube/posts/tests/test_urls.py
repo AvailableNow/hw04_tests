@@ -6,6 +6,14 @@ from ..models import Group, Post, User
 MAIN_URL = reverse('posts:index')
 NEW_POST_URL = reverse('posts:post_create')
 NOT_FOUND_URL = '/unexisting-page/'
+GROUP_URL = reverse(
+    'posts:group_list',
+    args=['test_slug']
+)
+PROFILE_URL = reverse(
+    'posts:profile',
+    args=['testauthor_1']
+)
 POST_TEXT = "ш" * 50
 
 
@@ -15,9 +23,7 @@ class PostsURLTests(TestCase):
         super().setUpClass()
         # создание пользователей
         cls.user = User.objects.create_user(username='testauthor_1')
-        cls.username = cls.user.username
         cls.user_2 = User.objects.create_user(username="testauthor_2")
-        cls.username_2 = cls.user_2.username
         # создание группы
         cls.group = Group.objects.create(
             title="Тест-название",
@@ -39,14 +45,6 @@ class PostsURLTests(TestCase):
             'posts:post_edit',
             args=[cls.post.id]
         )
-        cls.GROUP_URL = reverse(
-            'posts:group_list',
-            args=[cls.group.slug]
-        )
-        cls.PROFILE_URL = reverse(
-            'posts:profile',
-            args=[cls.username]
-        )
         cls.POST_EDIT_REDIRECT = reverse(
             "login") + "?next=" + cls.EDIT_POST_URL
         cls.CREATE_REDIRECT = reverse(
@@ -57,7 +55,6 @@ class PostsURLTests(TestCase):
         self.guest = Client()
         self.author = Client()
         self.author.force_login(self.user)
-
         # второй клиент не автор поста
         self.another = Client()
         self.another.force_login(self.user_2)
@@ -67,9 +64,8 @@ class PostsURLTests(TestCase):
         """Проверка доступности адресов любого клиента"""
         cases = [
             [MAIN_URL, self.guest, 200],
-            [MAIN_URL, self.author, 200],
-            [self.GROUP_URL, self.guest, 200],
-            [self.PROFILE_URL, self.guest, 200],
+            [GROUP_URL, self.guest, 200],
+            [PROFILE_URL, self.guest, 200],
             [NEW_POST_URL, self.guest, 302],
             [NEW_POST_URL, self.author, 200],
             [self.POST_PAGE_URL, self.guest, 200],
@@ -78,7 +74,6 @@ class PostsURLTests(TestCase):
             [NOT_FOUND_URL, self.guest, 404],
             [self.EDIT_POST_URL, self.another, 302],
         ]
-
         for url, client, code in cases:
             with self.subTest(url=url, client=client):
                 self.assertEqual(client.get(url).status_code, code)
@@ -88,14 +83,13 @@ class PostsURLTests(TestCase):
         """Проверка шаблонов для адресов и разных клиентов "/" """
         url_names = [
             ["posts/index.html", MAIN_URL, self.guest],
-            ["posts/group_list.html", self.GROUP_URL, self.guest],
+            ["posts/group_list.html", GROUP_URL, self.guest],
             ["posts/post_detail.html", self.POST_PAGE_URL, self.guest],
-            ["posts/profile.html", self.PROFILE_URL, self.guest],
+            ["posts/profile.html", PROFILE_URL, self.guest],
             ["posts/create_post.html", NEW_POST_URL, self.author],
             ["posts/create_post.html", self.EDIT_POST_URL,
              self.author],
         ]
-
         for template, url, client in url_names:
             with self.subTest(url=url):
                 self.assertTemplateUsed(client.get(url), template)
@@ -107,9 +101,8 @@ class PostsURLTests(TestCase):
             [NEW_POST_URL, self.guest, self.CREATE_REDIRECT],
             [self.EDIT_POST_URL, self.guest,
                 self.POST_EDIT_REDIRECT],
-            [self.EDIT_POST_URL, self.another, self.PROFILE_URL],
+            [self.EDIT_POST_URL, self.another, PROFILE_URL],
         ]
-
         for url, client, redirected in url_names:
             with self.subTest(url=url, client=client):
                 self.assertRedirects(client.get(url, follow=True), redirected)

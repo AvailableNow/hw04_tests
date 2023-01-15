@@ -13,6 +13,11 @@ TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 POST_TEST = "ш" * 50
 
 NEW_POST_URL = reverse('posts:post_create')
+NIK = 'testauthor_1'
+PROFILE_URL = reverse(
+    "posts:profile",
+    args=[NIK]
+)
 
 
 # Для сохранения media-файлов в тестах будет использоватьсяgs
@@ -53,10 +58,6 @@ class PostCreateFormTests(TestCase):
             'posts:post_edit',
             args=[cls.post.id]
         )
-        cls.PROFILE_URL = reverse(
-            "posts:profile",
-            args=[cls.username]
-        )
 
     # Удаляем временную папку
     @classmethod
@@ -94,11 +95,11 @@ class PostCreateFormTests(TestCase):
         posts_after = set(Post.objects.all())
         self.assertEqual(Post.objects.count(), posts_count + 1)
         self.assertEqual(len(posts_after.difference(posts_before)), 1)
-        post = list(posts_after.difference(posts_before))[0]
+        post = Post.objects.all().latest('id')
         self.assertEqual(post.text, form_data['text'])
         self.assertEqual(post.group.id, form_data['group'])
         self.assertEqual(post.author, self.user)
-        self.assertRedirects(response, self.PROFILE_URL)
+        self.assertRedirects(response, PROFILE_URL)
 
     def test_post_edit_by_author(self):
         """Выполнение редактирование поста автором"""
@@ -133,7 +134,7 @@ class PostCreateFormTests(TestCase):
         )
 
         post = Post.objects.get(pk=self.post.pk)
-        self.assertRedirects(response, self.PROFILE_URL)
+        self.assertRedirects(response, PROFILE_URL)
         self.assertEqual(post.text, self.post.text)
         self.assertEqual(post.group, self.post.group)
         self.assertEqual(post.author, self.post.author)
