@@ -20,6 +20,7 @@ TEST_URLS = {
     POST_EDIT: f'/posts/{POST_ID}/edit/',
 }
 
+
 class RoutesTest(TestCase):
     def test_routes(self):
         for page, url in TEST_URLS.items():

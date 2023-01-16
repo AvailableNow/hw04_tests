@@ -95,7 +95,7 @@ class PostCreateFormTests(TestCase):
         post = Post.objects.get(
             text='тестовая публикация',
             group=self.group_2.pk,
-            author= self.user
+            author=self.user
         )
         self.assertEqual(post.text, form_data['text'])
         self.assertEqual(post.group.id, form_data['group'])
