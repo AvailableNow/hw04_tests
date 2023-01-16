@@ -6,7 +6,6 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from ..models import Group, Post, User
-from django.conf import settings
 
 POSTS_SECOND_PAGE = 3
 MAIN_URL = reverse('posts:index')
@@ -30,7 +29,7 @@ ANOTHER_GROUP_URL = reverse(
 )
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
-POST_TEST = "ш" * 50
+POST_TEST = 'ш' * 50
 
 
 class PostsPagesTests(TestCase):
@@ -40,17 +39,17 @@ class PostsPagesTests(TestCase):
 
         cls.group = Group.objects.create(
             title='Тестовая группа 1',
-            slug='testslug_1',
+            slug=SLUG_1,
             description='Тестовое описание 1',
         )
 
         cls.group_2 = Group.objects.create(
             title='Тестовая группа 2',
-            slug='test_slug_2',
+            slug=SLUG_2,
             description='Тестовое описание 1',
         )
 
-        cls.user = User.objects.create_user(username='testauthor_1')
+        cls.user = User.objects.create_user(username=NIK_1)
         cls.post = Post.objects.create(
             text=POST_TEST,
             group=cls.group,
@@ -72,8 +71,6 @@ class PostsPagesTests(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
 
     def test_index_group_profile_show_correct_context(self):
         """Шаблоны index,group,profile сформированы с правильным контекстом."""
@@ -88,17 +85,13 @@ class PostsPagesTests(TestCase):
                 response = self.guest_client.get(url)
                 if context_name == 'page_obj':
                     self.assertEqual(len(response.context.get('page_obj')), 1)
-                    check_post = response.context['page_obj'][0]
-                    self.assertEqual(self.post.text, check_post.text)
-                    self.assertEqual(self.post.author, check_post.author)
-                    self.assertEqual(self.post.group, check_post.group)
-                    self.assertEqual(self.post, check_post)
+                    post = response.context['page_obj'][0]
+                    self.assertEqual(self.post.text, post.text)
+                    self.assertEqual(self.post.author, post.author)
+                    self.assertEqual(self.post.group, post.group)
                 else:
-                    check_post = response.context['post']
-                    self.assertEqual(self.post.text, check_post.text)
-                    self.assertEqual(self.post.author, check_post.author)
-                    self.assertEqual(self.post.group, check_post.group)
-                    self.assertEqual(self.post, check_post)
+                    post = response.context['post']
+                    self.assertEqual(self.post, post)
 
     def test_profile_has_correct_context(self):
         '''Автор в контексте Профиля'''
@@ -116,7 +109,7 @@ class PostsPagesTests(TestCase):
         self.assertEqual(group.slug, self.group.slug)
         self.assertEqual(group.pk, self.group.pk)
 
-    def test_post_to_the_right_group(self):
+    def test_post_did_not_appear_on_someone_group_feed(self):
         '''Пост не попал на чужую Групп-ленту'''
         response = self.authorized_client.get(ANOTHER_GROUP_URL)
         self.assertNotIn(self.post, response.context['page_obj'])

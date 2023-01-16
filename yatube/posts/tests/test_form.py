@@ -10,12 +10,13 @@ from ..models import Group, Post, User
 # Создаем временную папку для медиа-файлов;
 # на момент теста медиа папка будет переопределена
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
-POST_TEST = "ш" * 50
+POST_TEST = 'ш' * 50
 
 NEW_POST_URL = reverse('posts:post_create')
 NIK = 'testauthor_1'
+NIK_2 = 'testauthor_2'
 PROFILE_URL = reverse(
-    "posts:profile",
+    'posts:profile',
     args=[NIK]
 )
 
@@ -28,19 +29,19 @@ class PostCreateFormTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         # Создаем записи в базе данных
-        cls.user = User.objects.create_user(username='testauthor_1')
+        cls.user = User.objects.create_user(username=NIK)
         cls.username = cls.user.username
-        cls.user_2 = User.objects.create_user(username="testauthor_2")
+        cls.user_2 = User.objects.create_user(username=NIK_2)
         cls.username_2 = cls.user_2.username
         cls.group = Group.objects.create(
-            title="Тестовый заголовок группы",
-            slug="test-slug",
-            description="Тестовое описание",
+            title='Тестовый заголовок группы',
+            slug='test-slug',
+            description='Тестовое описание',
         )
         cls.group_2 = Group.objects.create(
-            title="новая группа",
+            title='новая группа',
             slug='test_slug2',
-            description="Тест-описание2"
+            description='Тест-описание2'
         )
 
         # Создадим запись в БД
@@ -70,10 +71,7 @@ class PostCreateFormTests(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
         # второй клиент не автор поста
-        self.authorized_client_2 = Client()
         self.authorized_client_2 = Client()
         self.authorized_client_2.force_login(self.user_2)
 
@@ -81,11 +79,10 @@ class PostCreateFormTests(TestCase):
     def test_create_post(self):
         """Проверка, что валидная форма создаёт пост"""
         form_data = {
-            "text": "тестовая публикация",
-            "group": self.group_2.pk
+            'text': 'тестовая публикация',
+            'group': self.group_2.pk
         }
         # Подсчитаем количество записей в Post
-        posts_count = Post.objects.count()
         posts_before = set(Post.objects.all())
         response = self.authorized_client.post(
             NEW_POST_URL,
@@ -93,9 +90,13 @@ class PostCreateFormTests(TestCase):
             follow=True
         )
         posts_after = set(Post.objects.all())
-        self.assertEqual(Post.objects.count(), posts_count + 1)
+
         self.assertEqual(len(posts_after.difference(posts_before)), 1)
-        post = Post.objects.all().latest('id')
+        post = Post.objects.get(
+            text='тестовая публикация',
+            group=self.group_2.pk,
+            author= self.user
+        )
         self.assertEqual(post.text, form_data['text'])
         self.assertEqual(post.group.id, form_data['group'])
         self.assertEqual(post.author, self.user)

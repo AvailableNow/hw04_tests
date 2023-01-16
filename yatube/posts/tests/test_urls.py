@@ -3,18 +3,25 @@ from django.urls import reverse
 
 from ..models import Group, Post, User
 
+
+SLUG = 'test_slug'
+NIK = 'testauthor_1'
+NIK_2 = 'testauthor_2'
 MAIN_URL = reverse('posts:index')
 NEW_POST_URL = reverse('posts:post_create')
 NOT_FOUND_URL = '/unexisting-page/'
 GROUP_URL = reverse(
     'posts:group_list',
-    args=['test_slug']
+    args=[SLUG]
 )
 PROFILE_URL = reverse(
     'posts:profile',
-    args=['testauthor_1']
+    args=[NIK]
 )
-POST_TEXT = "ш" * 50
+LOGIN = reverse('login')
+CREATE_REDIRECT = f'{LOGIN}?next={NEW_POST_URL}'
+
+POST_TEXT = 'ш' * 50
 
 
 class PostsURLTests(TestCase):
@@ -22,13 +29,13 @@ class PostsURLTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         # создание пользователей
-        cls.user = User.objects.create_user(username='testauthor_1')
-        cls.user_2 = User.objects.create_user(username="testauthor_2")
+        cls.user = User.objects.create_user(username=NIK)
+        cls.user_2 = User.objects.create_user(username=NIK_2)
         # создание группы
         cls.group = Group.objects.create(
-            title="Тест-название",
-            slug="test_slug",
-            description="Тест-описание"
+            title='Тест-название',
+            slug=SLUG,
+            description='Тест-описание'
         )
         # создание поста
         cls.post = Post.objects.create(
@@ -45,10 +52,7 @@ class PostsURLTests(TestCase):
             'posts:post_edit',
             args=[cls.post.id]
         )
-        cls.POST_EDIT_REDIRECT = reverse(
-            "login") + "?next=" + cls.EDIT_POST_URL
-        cls.CREATE_REDIRECT = reverse(
-            "login") + "?next=" + NEW_POST_URL
+        cls.POST_EDIT_REDIRECT = f'{LOGIN}?next={cls.EDIT_POST_URL}'
 
     def setUp(self):
         # первый клиент автор поста
@@ -82,12 +86,12 @@ class PostsURLTests(TestCase):
     def test_url_uses_correct_templates(self):
         """Проверка шаблонов для адресов и разных клиентов "/" """
         url_names = [
-            ["posts/index.html", MAIN_URL, self.guest],
-            ["posts/group_list.html", GROUP_URL, self.guest],
-            ["posts/post_detail.html", self.POST_PAGE_URL, self.guest],
-            ["posts/profile.html", PROFILE_URL, self.guest],
-            ["posts/create_post.html", NEW_POST_URL, self.author],
-            ["posts/create_post.html", self.EDIT_POST_URL,
+            ['posts/index.html', MAIN_URL, self.guest],
+            ['posts/group_list.html', GROUP_URL, self.guest],
+            ['posts/post_detail.html', self.POST_PAGE_URL, self.guest],
+            ['posts/profile.html', PROFILE_URL, self.guest],
+            ['posts/create_post.html', NEW_POST_URL, self.author],
+            ['posts/create_post.html', self.EDIT_POST_URL,
              self.author],
         ]
         for template, url, client in url_names:
@@ -98,7 +102,7 @@ class PostsURLTests(TestCase):
     def test_redirect(self):
         """Проверка редиректов для страниц."""
         url_names = [
-            [NEW_POST_URL, self.guest, self.CREATE_REDIRECT],
+            [NEW_POST_URL, self.guest, CREATE_REDIRECT],
             [self.EDIT_POST_URL, self.guest,
                 self.POST_EDIT_REDIRECT],
             [self.EDIT_POST_URL, self.another, PROFILE_URL],
