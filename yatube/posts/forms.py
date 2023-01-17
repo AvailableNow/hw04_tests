@@ -7,11 +7,10 @@ class PostForm(ModelForm):
 
     class Meta:
         model = Post
-        fields = ('text', 'group', 'image')
+        fields = ('text', 'group')
         labels = {
             'text': 'Введите текст',
-            'group': 'Выберите нужную группу',
-            'image': 'Выберите изображение'
+            'group': 'Выберите нужную группу'
         }
         help_text = {
             'text': 'Придумайте текст для поста. '

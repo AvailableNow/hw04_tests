@@ -146,4 +146,3 @@ dmypy.json
 .mypy_cache
 
 yatube/static/css
-yatube/posts/media
