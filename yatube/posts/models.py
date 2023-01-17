@@ -52,6 +52,13 @@ class Post(models.Model):
         related_name='posts',
         verbose_name='Группа'
     )
+    image = models.ImageField(
+        verbose_name='Картинка',
+        # Аргумент upload_to указывает директорию,
+        # в которую будут загружаться пользовательские файлы.
+        upload_to='posts/',
+        blank=True
+    )
 
     class Meta:
         ordering = ('-pub_date',)

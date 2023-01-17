@@ -92,11 +92,8 @@ class PostCreateFormTests(TestCase):
         posts_after = set(Post.objects.all())
 
         self.assertEqual(len(posts_after.difference(posts_before)), 1)
-        post = Post.objects.get(
-            text='тестовая публикация',
-            group=self.group_2.pk,
-            author=self.user
-        )
+        new_post_list = list(posts_after.difference(posts_before))
+        post = new_post_list[0]
         self.assertEqual(post.text, form_data['text'])
         self.assertEqual(post.group.id, form_data['group'])
         self.assertEqual(post.author, self.user)

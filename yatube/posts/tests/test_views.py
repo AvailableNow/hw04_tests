@@ -86,12 +86,12 @@ class PostsPagesTests(TestCase):
                 if context_name == 'page_obj':
                     self.assertEqual(len(response.context.get('page_obj')), 1)
                     post = response.context['page_obj'][0]
-                    self.assertEqual(self.post.text, post.text)
-                    self.assertEqual(self.post.author, post.author)
-                    self.assertEqual(self.post.group, post.group)
                 else:
                     post = response.context['post']
-                    self.assertEqual(self.post, post)
+            self.assertEqual(self.post.text, post.text)
+            self.assertEqual(self.post.author, post.author)
+            self.assertEqual(self.post.group, post.group)
+            self.assertEqual(self.post, post)
 
     def test_profile_has_correct_context(self):
         '''Автор в контексте Профиля'''
@@ -109,7 +109,7 @@ class PostsPagesTests(TestCase):
         self.assertEqual(group.slug, self.group.slug)
         self.assertEqual(group.pk, self.group.pk)
 
-    def test_post_did_not_appear_on_someone_group_feed(self):
+    def test_post_did_not_appear_on_another_group_feed(self):
         '''Пост не попал на чужую Групп-ленту'''
         response = self.authorized_client.get(ANOTHER_GROUP_URL)
         self.assertNotIn(self.post, response.context['page_obj'])
